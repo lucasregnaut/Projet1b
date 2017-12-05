@@ -5,7 +5,7 @@ libname bibsas "D:\M2_biostat\STA302_mixte\Projet";
 
 PROC CONTENTS data=bibsas.projet2b;
 RUN;
-/* notre jeu de données contient 677 observations et 11 variables */
+/* notre jeu de données contient 677 observations et 14 variables */
 
 *pour avoir une observation par individu;
 data first;
@@ -18,7 +18,7 @@ run;
 /* DESCRIPTIF */
 proc means data=bibsas.projet2b n nmiss mean std min q1 median q3 max maxdec=2;
 var delai_vis PAS_COU PAD_COU PAS_DEB PAD_DEB;
-run; *il n'y a que la description d'UMSARS qui est intéréssant;
+run; *il n'y a que la description de PAS et PAD qui est intéréssante;
 proc univariate data=bibsas.projet2b;
 var PAS_COU PAD_COU PAS_DEB PAD_DEB;
 histogram PAS_COU PAD_COU PAS_DEB PAD_DEB/normal;
@@ -51,7 +51,7 @@ PAD_diff=PAD_DEB - PAD_COU;
 PAM_DEB=(PAS_DEB + 2*PAD_DEB)/3;
 PAM_COU=(PAS_COU + 2*PAD_COU)/3;
 PAM_diff=PAM_DEB - PAM_COU;
-PAM_diff2=(PAS_diff + 2*PAD_diff)/3; *pareil
+PAM_diff2=(PAS_diff + 2*PAD_diff)/3; *pareil;
 run;
 proc means data=projet2b n nmiss mean std min q1 median q3 max maxdec=2;
 var retro1 retro2;
@@ -76,6 +76,6 @@ run;
 repeated /type=sp(pow)(retro2) sub=id R RCORR LOCAL;
 estimate
 
-à retirer :
+à retirer du modèle (non significatif) :
 retro2*type_ams
 */
