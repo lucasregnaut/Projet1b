@@ -172,11 +172,12 @@ model UMSARS_1_2= AGE_EVNT /s;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run; *Signif p-value=0.0220;
 
+/* ou on met quand même toutes les variables dans l'analyse multivariable ? */
 
 
-/**************************/
-/* Tests des interactions */
-/**************************/
+/******************************************/
+/* Tests des interactions (avec le temps) */
+/******************************************/
 
 
 /********************************/
@@ -187,6 +188,9 @@ run; *Signif p-value=0.0220;
 /*************************/
 /* Analyse multivariable */
 /*************************/
+
+/* Selection de variable pour le modele avec intercept et pente aleatoire */
+/* Selection pas à pas descendant */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO;
 model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO temps_retro*type_ams/s; * /s : estimation des Béta (effets fixes) en plus;
@@ -199,3 +203,53 @@ estimate
 à retirer du modèle (non significatif) :
 temps_retro*type_ams
 */
+
+
+
+/*************************/
+/* Adéquation du modèle  */
+/*************************/
+
+/* Etude de la distribution de UMSARS */
+proc sgplot data=projet1b;
+histogram UMSARS_1_2;
+run;
+*Spaghetti plot;
+proc sgplot data=projet1b;
+series y=UMSARS_1_2 x=temps_retro/group=ID;
+run;
+
+/* Création des quantiles pour la variable temps rétro */
+proc univariate data=projet1b;
+var temps_retro;
+output out=quantile pctlpre=P_ pctlpts=0 to 100 by 20;
+run;
+data quantile_temps;
+  set projet1b;
+  if temps_retro >= 0.02 and temps_retro < 0.83 then quant=0;
+  if temps_retro >= 0.83 and temps_retro < 1.72 then quant=1;
+  if temps_retro >= 1.72 and temps_retro < 2.76 then quant=2;
+  if temps_retro >= 2.76 and temps_retro < 4.89 then quant=3;
+  if temps_retro >= 4.89 and temps_retro < 9.36 then quant=4;
+  if temps_retro >= 9.36  then quant=5;
+run;
+/* Répartition de UMSARS selon les quantiles */
+proc sgpanel data=quantile_temps;
+  panelby quant/novarname; 
+  histogram UMSARS_1_2;
+run;
+
+/* Exemple */
+proc mixed data=projet1b method=ml noclprint covtest;
+class id type_ams SEXE CERTITUDE DYSAUTO;
+model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO temps_retro*type_ams/s residual vciry outp=cond outpm=marg;
+random intercept temps_retro/sub=id type=UN G GCORR;
+run;
+/* Residus de cholesky */
+proc sgplot data= marg;
+histogram scaledresid;
+run;
+/* Heteroscedasticite */
+proc sgplot data=marg;
+scatter y=resid x=pred;
+run;
