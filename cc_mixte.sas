@@ -118,6 +118,8 @@ proc means data=projet1b n nmiss mean std min q1 median q3 max maxdec=2;
 var delai_vis UMSARS_1_2 temps_retro;
 run;
 
+/* faire une analyse descriptive séparée pour les décédés (DCD=oui) et les censurés (DCD=non) */
+
 
 /*************************/
 /* Analyses univariables */
