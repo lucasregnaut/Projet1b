@@ -24,8 +24,8 @@ data projet1b;
 	label DYSAUTO='Présence et type de premiers symptômes';
 	label DCD='Indicateur de décès';
 	label AGE_EVNT="Age à l'évènement";
-	label DELAI_VIS="Délai depuis le diagnostic";
-	label DELAI_SYMPT="Délai entre les premiers symptômes et la maladie";
+	label DELAI_VIS="Délai depuis le diagnostic (en années)";
+	label DELAI_SYMPT="Délai entre les premiers symptômes et la maladie (en années)";
 	label UMSARS_1_2="Somme des UMSARS 1 et 2";
 run;
 
@@ -42,7 +42,7 @@ data projet1b;
 set projet1b;
 *retro1=AGE_EVNT-AGEDIAG;
 	temps_retro=AGE_EVNT-AGEDIAG-DELAI_VIS;
-	label temps_retro="Temps rétrospectif avant le décès";
+	label temps_retro="Temps rétrospectif avant le décès (en années)";
 run;
 
 
@@ -75,25 +75,26 @@ var UMSARS_1_2 ;
 histogram UMSARS_1_2 /normal;
 run;
 
-*descriptif variables quali;
+*descriptif variables quali (au total, et selon l'indicateur de décès);
 proc tabulate data=first missing noseps formchar(1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ";
 	class	SEXE TYPE_AMS certitude dysauto dcd;
-	table	(SEXE TYPE_AMS certitude dysauto dcd all="Total")
+	table	(SEXE TYPE_AMS certitude dysauto all="Total")
 			,
-			(all="PATIENTS")*(n="N" colpctn="%")*f=5.2
+			(DCD all="TOTAL")*(n="N" colpctn="%")*f=5.2
 		/misstext=" " rtspace=50;
 run;
 *verif ok;
 proc freq data=first;
-tables sexe type_ams certitude dysauto dcd;
+tables sexe type_ams certitude dysauto sexe*dcd type_ams*dcd certitude*dcd dysauto*dcd;
 run;
 
 *descriptif variables quanti (first);
 proc tabulate data=first missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
+	class 	dcd;
 	var		agediag delai_sympt age_evnt;
 	table	(agediag delai_sympt age_evnt)
 			,
-			(n nmiss mean std min q1 median q3 max)*f=15.2
+			(DCD all="TOTAL")*(n nmiss mean std min q1 median q3 max)*f=15.2
 		/misstext=" " rtspace=35;
 	keylabel n="N" nmiss="Données manquantes" mean="Moyenne" std="Ecart-type" stderr="SE" 
 			min="Minimum" q1="1er quartile" median="Médiane" q3="3e quartile" max="Maximum";
@@ -101,14 +102,16 @@ run;
 *verif ok;
 proc means data=first n nmiss mean std min q1 median q3 max maxdec=2;
 var agediag delai_sympt age_evnt;
+class dcd;
 run;
 
 *descriptif variables quanti (projet1b);
 proc tabulate data=projet1b missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
+	class 	dcd;
 	var		delai_vis UMSARS_1_2 temps_retro;
 	table	(delai_vis UMSARS_1_2 temps_retro)
 			,
-			(n nmiss mean std min q1 median q3 max)*f=15.2
+			(DCD all="TOTAL")*(n nmiss mean std min q1 median q3 max)*f=15.2
 		/misstext=" " rtspace=35;
 	keylabel n="N" nmiss="Données manquantes" mean="Moyenne" std="Ecart-type" stderr="SE" 
 			min="Minimum" q1="1er quartile" median="Médiane" q3="3e quartile" max="Maximum";
@@ -116,9 +119,10 @@ run;
 *verif ok;
 proc means data=projet1b n nmiss mean std min q1 median q3 max maxdec=2;
 var delai_vis UMSARS_1_2 temps_retro;
+class dcd;
 run;
 
-/* faire une analyse descriptive séparée pour les décédés (DCD=oui) et les censurés (DCD=non) */
+/* avec en plus une analyse descriptive séparée pour les décédés (DCD=oui) et les censurés (DCD=non) */
 
 
 /*************************/
