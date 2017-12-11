@@ -32,28 +32,34 @@ run;
 *pour avoir une observation par individu;
 data first;
 set projet1b;
-by id;
-if first.id=1 then output;
+	by id;
+	if first.id=1 then output;
 run;
 /* quand c'est la première visite, DELAI_VIS=0 */
 
 *définition du temps rétrospectif;
 data projet1b;
 set projet1b;
-*retro1=AGE_EVNT-AGEDIAG;
-	temps_retro=AGE_EVNT-AGEDIAG-DELAI_VIS;
+	*retro1=AGE_EVNT-AGEDIAG;
+	*retro2=AGE_EVNT-AGEDIAG-DELAI_VIS;
+	temps_retro=AGEDIAG-AGE_EVNT+DELAI_VIS;
 	label temps_retro="Temps rétrospectif avant le décès (en années)";
+run;
+
+*on ne prend que les décédés;
+data projet1b_deces;
+set projet1b;
+	if DCD="Oui" then output;
 run;
 
 
 
 /* Variable à expliquer : UMSARS
 ça suit à peu près une loi normale : modèle linéaire mixte
-Temps rétrospectif avant le décès ???
+
+"temps rétrospectif avant le décès" : attention on ne s'intéresse qu'aux décédés !
 
 normalité : par temps de visite ?
-
-biblio : "retrospective mixed model"
 
 Discuter de manière poussée des limites, proposer une analyse satisfaisante pour décrire la progression jusqu'au décès
 modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas de troncature à gauche ?)
@@ -132,51 +138,51 @@ run;
 /* SEXE */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id SEXE;
-model UMSARS_1_2= SEXE /s;
+model UMSARS_1_2= SEXE temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.1619;
+run; *NS p-value=0.1636;
 
 /* TYPE_AMS */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id TYPE_AMS;
-model UMSARS_1_2= TYPE_AMS /s;
+model UMSARS_1_2= TYPE_AMS temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.4390;
+run; *NS p-value=0.2193;
 
 /* CERTITUDE */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id CERTITUDE;
-model UMSARS_1_2= CERTITUDE /s;
+model UMSARS_1_2= CERTITUDE temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.3382;
+run; *NS p-value=0.3854;
 
 /* DYSAUTO */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id DYSAUTO;
-model UMSARS_1_2= DYSAUTO /s;
+model UMSARS_1_2= DYSAUTO temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *Signif p-value=0.0131;
+run; *Signif p-value=0.0128;
 
 /* AGEDIAG */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id ;
-model UMSARS_1_2= AGEDIAG /s;
+model UMSARS_1_2= AGEDIAG temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.5831;
+run; *NS p-value=0.7772;
 
 /* DELAI_SYMPT */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id ;
-model UMSARS_1_2= DELAI_SYMPT /s;
+model UMSARS_1_2= DELAI_SYMPT temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run; *Signif p-value=<.0001;
 
 /* AGE_EVNT */
 proc mixed data=projet1b method=ml noclprint covtest;
 class id ;
-model UMSARS_1_2= AGE_EVNT /s;
+model UMSARS_1_2= AGE_EVNT temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *Signif p-value=0.0220;
+run; *Signif p-value=0.0016;
 
 /* ou on met quand même toutes les variables dans l'analyse multivariable ? */
 
@@ -198,8 +204,9 @@ run; *Signif p-value=0.0220;
 /* Selection de variable pour le modele avec intercept et pente aleatoire */
 /* Selection pas à pas descendant */
 proc mixed data=projet1b method=ml noclprint covtest;
-class id type_ams SEXE CERTITUDE DYSAUTO;
-model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO temps_retro*type_ams/s; * /s : estimation des Béta (effets fixes) en plus;
+class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
+model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
+	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /*
@@ -246,13 +253,14 @@ proc sgpanel data=quantile_temps;
 run;
 
 /* Exemple */
-proc mixed data=projet1b method=ml noclprint covtest;
-class id type_ams SEXE CERTITUDE DYSAUTO;
-model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO temps_retro*type_ams/s residual vciry outp=cond outpm=marg;
+proc mixed data=projet1b_deces method=ml noclprint covtest;
+class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
+model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
+	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual vciry outp=cond outpm=marg;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /* Residus de cholesky */
-proc sgplot data= marg;
+proc sgplot data=marg;
 histogram scaledresid;
 run;
 /* Heteroscedasticite */
