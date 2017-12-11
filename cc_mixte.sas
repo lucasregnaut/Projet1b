@@ -35,7 +35,7 @@ set projet1b;
 	by id;
 	if first.id=1 then output;
 run;
-/* quand c'est la première visite, DELAI_VIS=0 */
+/* quand c'est la première visite, DELAI_VIS=0. On a donc 237 sujets différents */
 
 *définition du temps rétrospectif;
 data projet1b;
@@ -75,8 +75,8 @@ modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas
 /*      Descriptif       */
 /*************************/
 
-*vérifier la normalité (?);
-proc univariate data=projet1b;
+*vérifier la normalité;
+proc univariate data=projet1b_deces;
 var UMSARS_1_2 ;
 histogram UMSARS_1_2 /normal;
 run;
@@ -202,7 +202,6 @@ run; *Signif p-value=0.0016 (n=677);
 /*************************/
 
 /* Selection de variable pour le modele avec intercept et pente aleatoire */
-/* Selection pas à pas descendant */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
 model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
@@ -210,11 +209,13 @@ model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /*
+Selection pas à pas descendant :
+- enlever la p valeur la plus élevée
+- regarder AIC
+- regarder si les coefficients ne changent pas trop
+
 repeated /type=sp(pow)(temps_retro) sub=id R RCORR LOCAL;
 estimate
-
-à retirer du modèle (non significatif) :
-temps_retro*type_ams
 */
 
 
@@ -255,8 +256,8 @@ run;
 /* Exemple */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
-model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
-	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual vciry outp=cond outpm=marg;
+model UMSARS_1_2=temps_retro SEXE type_ams CERTITUDE DYSAUTO DELAI_SYMPT 
+	 temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual vciry outp=cond outpm=marg;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /* Residus de cholesky */
@@ -266,4 +267,14 @@ run;
 /* Heteroscedasticite */
 proc sgplot data=marg;
 scatter y=resid x=pred;
+run;
+*trouver donnée aberrante;
+data donnees_aberrantes;
+set marg;
+if Resid>40 then output;
+run;
+*le supprimer;
+data projet1b_deces;
+set projet1b_deces;
+if ID=113 then delete;
 run;
