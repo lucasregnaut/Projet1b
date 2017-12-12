@@ -63,6 +63,9 @@ normalité : par temps de visite ?
 
 Discuter de manière poussée des limites, proposer une analyse satisfaisante pour décrire la progression jusqu'au décès
 modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas de troncature à gauche ?)
+
+effet quadratique ! (pas linéaire sur la fin du spaghetti plot + déviations dans les résidus) 
+http://www.math.ttu.edu/~atrindad/software/MixedModels-RandSAScomparison.pdf
 */
 
 
@@ -77,6 +80,10 @@ modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas
 
 *vérifier la normalité;
 proc univariate data=projet1b_deces;
+var UMSARS_1_2 ;
+histogram UMSARS_1_2 /normal;
+run;
+proc univariate data=first;
 var UMSARS_1_2 ;
 histogram UMSARS_1_2 /normal;
 run;
@@ -134,55 +141,42 @@ run;
 /*************************/
 /* Analyses univariables */
 /*************************/
+*au seuil 20%;
 
 /* SEXE */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id SEXE;
 model UMSARS_1_2= SEXE temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.1636 (n=677);
+run; *S p-value=0.1636 (n=677) / S p-value=0.0960 (n=274);
 
 /* TYPE_AMS */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id TYPE_AMS;
 model UMSARS_1_2= TYPE_AMS temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.2193 (n=677);
+run; *NS p-value=0.2193 (n=677) / NS p-value=0.4675 (n=274);
 
 /* CERTITUDE */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id CERTITUDE;
 model UMSARS_1_2= CERTITUDE temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.3854 (n=677);
+run; *NS p-value=0.3854 (n=677) / S p-value=0.1128 (n=274);
 
 /* DYSAUTO */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id DYSAUTO;
 model UMSARS_1_2= DYSAUTO temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *Signif p-value=0.0128 (n=677);
-
-/* AGEDIAG */
-proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id ;
-model UMSARS_1_2= AGEDIAG temps_retro/s;
-random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.7772 (n=677);
+run; *S p-value=0.0128 (n=677) / S p-value=0.0994 (n=274);
 
 /* DELAI_SYMPT */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id ;
 model UMSARS_1_2= DELAI_SYMPT temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *Signif p-value=<.0001 (n=677);
-
-/* AGE_EVNT */
-proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id ;
-model UMSARS_1_2= AGE_EVNT temps_retro/s;
-random intercept temps_retro/sub=id type=UN G GCORR;
-run; *Signif p-value=0.0016 (n=677);
+run; *S p-value=<.0001 (n=677) / S p-value=0.0452 (n=274);
 
 /* ou on met quand même toutes les variables dans l'analyse multivariable ? */
 
@@ -205,7 +199,7 @@ run; *Signif p-value=0.0016 (n=677);
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
 model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
-	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s;
+	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual;
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /*
@@ -234,18 +228,18 @@ series y=UMSARS_1_2 x=temps_retro/group=ID;
 run;
 
 /* Création des quantiles pour la variable temps rétro */
-proc univariate data=projet1b;
+proc univariate data=projet1b_deces;
 var temps_retro;
 output out=quantile pctlpre=P_ pctlpts=0 to 100 by 20;
 run;
 data quantile_temps;
   set projet1b;
-  if temps_retro >= 0.02 and temps_retro < 0.83 then quant=0;
-  if temps_retro >= 0.83 and temps_retro < 1.72 then quant=1;
-  if temps_retro >= 1.72 and temps_retro < 2.76 then quant=2;
-  if temps_retro >= 2.76 and temps_retro < 4.89 then quant=3;
-  if temps_retro >= 4.89 and temps_retro < 9.36 then quant=4;
-  if temps_retro >= 9.36  then quant=5;
+  if temps_retro >= -8.19 and temps_retro < -3.78 then quant=0;
+  if temps_retro >= -3.78 and temps_retro < -2.38 then quant=1;
+  if temps_retro >= -2.38 and temps_retro < -1.59 then quant=2;
+  if temps_retro >= -1.59 and temps_retro < -0.86 then quant=3;
+  if temps_retro >= -0.86 and temps_retro < -0.04 then quant=4;
+  if temps_retro >= -0.04  then quant=5;
 run;
 /* Répartition de UMSARS selon les quantiles */
 proc sgpanel data=quantile_temps;
@@ -253,13 +247,18 @@ proc sgpanel data=quantile_temps;
   histogram UMSARS_1_2;
 run;
 
-/* Exemple */
+
+/* Exemple (avec effet quadratique)
+retirés du modèle : temps_retro*type_ams  type_ams temps_retro*DYSAUTO temps_retro*SEXE SEXE DYSAUTO */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
-model UMSARS_1_2=temps_retro SEXE type_ams CERTITUDE DYSAUTO DELAI_SYMPT 
-	 temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual vciry outp=cond outpm=marg;
-random intercept temps_retro/sub=id type=UN G GCORR;
-run;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro CERTITUDE DELAI_SYMPT 
+	  temps_retro*CERTITUDE temps_retro*DELAI_SYMPT
+		temps_retro*temps_retro*DELAI_SYMPT /s 
+		residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
+run; *AIC=2081; 
+
 /* Residus de cholesky */
 proc sgplot data=marg;
 histogram scaledresid;
@@ -268,6 +267,8 @@ run;
 proc sgplot data=marg;
 scatter y=resid x=pred;
 run;
+
+/*
 *trouver donnée aberrante;
 data donnees_aberrantes;
 set marg;
@@ -278,3 +279,4 @@ data projet1b_deces;
 set projet1b_deces;
 if ID=113 then delete;
 run;
+*/
