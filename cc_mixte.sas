@@ -6,6 +6,8 @@
 /*                                DATA MANAGEMENT                      	 			*/
 /*----------------------------------------------------------------------------------*/
 
+*Google doc : https://docs.google.com/document/d/11PwSYzxIvCW-VYp9960BlWDgeKJQpqmahfjYhh8H7LU/edit ;
+
 libname bibsas "F:\M2_biostat\STA302_mixte\Projet";
 libname bibsas "E:\M2_biostat\STA302_mixte\Projet";
 libname bibsas "D:\M2_biostat\STA302_mixte\Projet";
@@ -55,7 +57,7 @@ run;
 
 
 /* Variable à expliquer : UMSARS
-ça suit à peu près une loi normale : modèle linéaire mixte
+ça suit à peu près une loi normale : modèle linéaire mixte (vérifier l'hétéroscédasticité des résidus a posteriori)
 
 "temps rétrospectif avant le décès" : attention on ne s'intéresse qu'aux décédés !
 
@@ -64,8 +66,9 @@ normalité : par temps de visite ?
 Discuter de manière poussée des limites, proposer une analyse satisfaisante pour décrire la progression jusqu'au décès
 modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas de troncature à gauche ?)
 
-effet quadratique ! (pas linéaire sur la fin du spaghetti plot + déviations dans les résidus) 
+forme quadratique ! (pas linéaire sur la fin du spaghetti plot + déviations dans les résidus) 
 http://www.math.ttu.edu/~atrindad/software/MixedModels-RandSAScomparison.pdf
+https://www.theanalysisfactor.com/regression-modelshow-do-you-know-you-need-a-polynomial/
 */
 
 
@@ -101,7 +104,7 @@ proc freq data=first;
 tables sexe type_ams certitude dysauto sexe*dcd type_ams*dcd certitude*dcd dysauto*dcd;
 run;
 
-*descriptif variables quanti (first);
+*descriptif variables quanti (table first);
 proc tabulate data=first missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
 	class 	dcd;
 	var		agediag delai_sympt age_evnt;
@@ -118,7 +121,7 @@ var agediag delai_sympt age_evnt;
 class dcd;
 run;
 
-*descriptif variables quanti (projet1b);
+*descriptif variables quanti (table projet1b);
 proc tabulate data=projet1b missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
 	class 	dcd;
 	var		delai_vis UMSARS_1_2 temps_retro;
@@ -203,10 +206,11 @@ model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT
 random intercept temps_retro/sub=id type=UN G GCORR;
 run;
 /*
-Selection pas à pas descendant :
+Selection pas à pas descendante :
 - enlever la p valeur la plus élevée
 - regarder AIC
 - regarder si les coefficients ne changent pas trop
+- si on enlève une interaction : test du rapport de vraisemblance
 
 repeated /type=sp(pow)(temps_retro) sub=id R RCORR LOCAL;
 estimate
@@ -248,14 +252,13 @@ proc sgpanel data=quantile_temps;
 run;
 
 
-/* Exemple (avec effet quadratique)
+/* Exemple (avec forme quadratique)
 retirés du modèle : temps_retro*type_ams  type_ams temps_retro*DYSAUTO temps_retro*SEXE SEXE DYSAUTO */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
 model UMSARS_1_2=temps_retro temps_retro*temps_retro CERTITUDE DELAI_SYMPT 
 	  temps_retro*CERTITUDE temps_retro*DELAI_SYMPT
-		temps_retro*temps_retro*DELAI_SYMPT /s 
-		residual vciry outp=cond outpm=marg;
+		temps_retro*temps_retro*DELAI_SYMPT /s residual vciry outp=cond outpm=marg;
 random intercept temps_retro /sub=id type=UN G GCORR;
 run; *AIC=2081; 
 
