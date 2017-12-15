@@ -69,6 +69,8 @@ modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas
 forme quadratique ! (pas linéaire sur la fin du spaghetti plot + déviations dans les résidus) 
 http://www.math.ttu.edu/~atrindad/software/MixedModels-RandSAScomparison.pdf
 https://www.theanalysisfactor.com/regression-modelshow-do-you-know-you-need-a-polynomial/
+
+ANOVA, tests de corrélations ?
 */
 
 
@@ -81,11 +83,7 @@ https://www.theanalysisfactor.com/regression-modelshow-do-you-know-you-need-a-po
 /*      Descriptif       */
 /*************************/
 
-*vérifier la normalité;
-proc univariate data=projet1b_deces;
-var UMSARS_1_2 ;
-histogram UMSARS_1_2 /normal;
-run;
+*vérifier la normalité (à baseline);
 proc univariate data=first;
 var UMSARS_1_2 ;
 histogram UMSARS_1_2 /normal;
@@ -141,72 +139,82 @@ run;
 /* attention : on n'étudie que les décédés (DCD=Oui) */
 
 
+
 /*************************/
 /* Analyses univariables */
 /*************************/
-*au seuil 20%;
+*au seuil 5% pour les interactions;
 
 /* SEXE */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id SEXE;
-model UMSARS_1_2= SEXE temps_retro/s;
+model UMSARS_1_2= SEXE temps_retro temps_retro*temps_retro SEXE*temps_retro SEXE*temps_retro*temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *S p-value=0.1636 (n=677) / S p-value=0.0960 (n=274);
+run;
 
 /* TYPE_AMS */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id TYPE_AMS;
-model UMSARS_1_2= TYPE_AMS temps_retro/s;
+model UMSARS_1_2= TYPE_AMS temps_retro temps_retro*temps_retro TYPE_AMS*temps_retro TYPE_AMS*temps_retro*temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.2193 (n=677) / NS p-value=0.4675 (n=274);
+run;
 
 /* CERTITUDE */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
 class id CERTITUDE;
-model UMSARS_1_2= CERTITUDE temps_retro/s;
+model UMSARS_1_2= CERTITUDE temps_retro temps_retro*temps_retro CERTITUDE*temps_retro CERTITUDE*temps_retro*temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *NS p-value=0.3854 (n=677) / S p-value=0.1128 (n=274);
+run;
 
 /* DYSAUTO */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id DYSAUTO;
-model UMSARS_1_2= DYSAUTO temps_retro/s;
+class id dysauto;
+model UMSARS_1_2= DYSAUTO temps_retro temps_retro*temps_retro DYSAUTO*temps_retro DYSAUTO*temps_retro*temps_retro/s;
 random intercept temps_retro/sub=id type=UN G GCORR;
-run; *S p-value=0.0128 (n=677) / S p-value=0.0994 (n=274);
+run;
 
 /* DELAI_SYMPT */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id ;
-model UMSARS_1_2= DELAI_SYMPT temps_retro/s;
-random intercept temps_retro/sub=id type=UN G GCORR;
-run; *S p-value=<.0001 (n=677) / S p-value=0.0452 (n=274);
+class id;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*temps_retro DELAI_SYMPT*temps_retro*temps_retro/s 
+	residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
+run; *significatif;
 
-/* ou on met quand même toutes les variables dans l'analyse multivariable ? */
-
-
-/********************************************/
-/* Tests des interactions (avec le temps) ? */
-/********************************************/
-
-
-/**********************************/
-/* ANOVA, tests de corrélations ? */
-/**********************************/
 
 
 /*************************/
 /* Analyse multivariable */
 /*************************/
-
-/* Selection de variable pour le modele avec intercept et pente aleatoire */
 proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
-model UMSARS_1_2=temps_retro type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT 
-	temps_retro*SEXE temps_retro*type_ams temps_retro*CERTITUDE temps_retro*DYSAUTO temps_retro*DELAI_SYMPT/s residual;
-random intercept temps_retro/sub=id type=UN G GCORR;
+class id type_ams SEXE CERTITUDE DYSAUTO;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*temps_retro SEXE CERTITUDE DYSAUTO TYPE_AMS/s residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
 run;
+
+*sans type_ams;
+proc mixed data=projet1b_deces method=ml noclprint covtest;
+class id type_ams SEXE CERTITUDE DYSAUTO;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*temps_retro SEXE CERTITUDE DYSAUTO/s residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
+run;
+
+*sans dysauto/type_ams;
+proc mixed data=projet1b_deces method=ml noclprint covtest;
+class id SEXE CERTITUDE;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*temps_retro SEXE CERTITUDE/s residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
+run;
+
+*sans certitude/dysauto/type_ams;
+proc mixed data=projet1b_deces method=ml noclprint covtest;
+class id SEXE ;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*temps_retro SEXE/s residual vciry outp=cond outpm=marg;
+random intercept temps_retro /sub=id type=UN G GCORR;
+run; *modèle final;
+
 /*
-Selection pas à pas descendante :
+Selection pas à pas descendante (modèle à pente et intercept aléatoire) :
 - enlever la p valeur la plus élevée
 - regarder AIC
 - regarder si les coefficients ne changent pas trop
@@ -222,10 +230,6 @@ estimate
 /* Adéquation du modèle  */
 /*************************/
 
-/* Etude de la distribution de UMSARS */
-proc sgplot data=projet1b_deces;
-histogram UMSARS_1_2;
-run;
 *Spaghetti plot;
 proc sgplot data=projet1b_deces;
 series y=UMSARS_1_2 x=temps_retro/group=ID;
@@ -252,16 +256,6 @@ proc sgpanel data=quantile_temps;
 run;
 
 
-/* Exemple (avec forme quadratique)
-retirés du modèle : temps_retro*type_ams  type_ams temps_retro*DYSAUTO temps_retro*SEXE SEXE DYSAUTO */
-proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id type_ams SEXE CERTITUDE DYSAUTO DELAI_SYMPT;
-model UMSARS_1_2=temps_retro temps_retro*temps_retro CERTITUDE DELAI_SYMPT 
-	  temps_retro*CERTITUDE temps_retro*DELAI_SYMPT
-		temps_retro*temps_retro*DELAI_SYMPT /s residual vciry outp=cond outpm=marg;
-random intercept temps_retro /sub=id type=UN G GCORR;
-run; *AIC=2081; 
-
 /* Residus de cholesky */
 proc sgplot data=marg;
 histogram scaledresid;
@@ -270,6 +264,15 @@ run;
 proc sgplot data=marg;
 scatter y=resid x=pred;
 run;
+
+*étude du fit;
+symbol1 i = join value=circle; 
+proc gplot data=marg;
+by id ;
+plot1 umsars_1_2*temps_retro/legend overlay;
+plot2 pred*temps_retro/ legend overlay;
+where id in (5,11,15,73,69,106,111);
+run ;
 
 /*
 *trouver donnée aberrante;
