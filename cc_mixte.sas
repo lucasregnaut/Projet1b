@@ -225,8 +225,10 @@ model UMSARS_1_2=temps_retro temps_retro*temps_retro SEXE DELAI_SYMPT DELAI_SYMP
 random intercept temps_retro /sub=id type=UN G GCORR;
 estimate "Niveau moyen chez les femmes, à T=0" int 1 SEXE 1 0/ cl;
 estimate "Niveau moyen chez les hommes, à T=0" int 1 SEXE 0 1/ cl;
-estimate "Pente si le délai symptomatique=1" temps_retro 1 DELAI_SYMPT*temps_retro 1 / cl;
-estimate "Pente si le délai symptomatique=0" temps_retro 1 DELAI_SYMPT*temps_retro 0 / cl;
+estimate "Pente si le délai symptomatique=1" temps_retro -1 temps_retro*temps_retro -1 DELAI_SYMPT -1 DELAI_SYMPT*temps_retro -1 / cl;
+estimate "Pente si le délai symptomatique=0" temps_retro -1 temps_retro*temps_retro -1 DELAI_SYMPT 0 DELAI_SYMPT*temps_retro 0 / cl;
+estimate "Niveau moyen chez les femmes, à T=-2" int 1 SEXE 1 0 temps_retro -2 DELAI_SYMPT*temps_retro -2/ cl;
+estimate "Niveau moyen chez les hommes, à T=-2" int 1 SEXE 0 1 temps_retro -2 DELAI_SYMPT*temps_retro 0/ cl;
 run; *modèle final;
 * residual vciry outp=cond outpm=marg ;
 
