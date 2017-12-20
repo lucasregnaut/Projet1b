@@ -54,6 +54,18 @@ set projet1b;
 	if DCD="Oui" then output;
 run;
 
+*exporter pour travailler sur R : To export to comma-delimited use the following syntax;
+PROC EXPORT DATA=projet1b 
+OUTFILE='D:\M2_biostat\STA302_mixte\Projet\projet1b.csv' 
+DBMS=CSV REPLACE;
+DELIMITER=";"; 
+RUN;
+PROC EXPORT DATA=first 
+OUTFILE='D:\M2_biostat\STA302_mixte\Projet\first.csv' 
+DBMS=CSV REPLACE;
+DELIMITER=";"; 
+RUN;
+
 
 
 /* Variable à expliquer : UMSARS
@@ -61,7 +73,7 @@ run;
 
 "temps rétrospectif avant le décès" : attention on ne s'intéresse qu'aux décédés !
 
-normalité : par temps de visite ?
+normalité : pour intercept et pente aléatoire
 
 Discuter de manière poussée des limites, proposer une analyse satisfaisante pour décrire la progression jusqu'au décès
 modèle conjoint ? on a un indicateur du décès, un age d'évènement, 2 délais (pas de troncature à gauche ?)
@@ -206,12 +218,18 @@ model UMSARS_1_2=temps_retro temps_retro*temps_retro DELAI_SYMPT DELAI_SYMPT*tem
 random intercept temps_retro /sub=id type=UN G GCORR;
 run;
 
-*sans certitude/dysauto/type_ams;
+*sans certitude/dysauto/type_ams ;
 proc mixed data=projet1b_deces method=ml noclprint covtest;
-class id SEXE;
-model UMSARS_1_2=temps_retro temps_retro*temps_retro SEXE DELAI_SYMPT DELAI_SYMPT*temps_retro /s residual vciry outp=cond outpm=marg;
+class id sexe;
+model UMSARS_1_2=temps_retro temps_retro*temps_retro SEXE DELAI_SYMPT DELAI_SYMPT*temps_retro /s ;
 random intercept temps_retro /sub=id type=UN G GCORR;
+estimate "Niveau moyen chez les femmes, à T=0" int 1 SEXE 1 0/ cl;
+estimate "Niveau moyen chez les hommes, à T=0" int 1 SEXE 0 1/ cl;
+estimate "Pente si le délai symptomatique=1" temps_retro 1 DELAI_SYMPT*temps_retro 1 / cl;
+estimate "Pente si le délai symptomatique=0" temps_retro 1 DELAI_SYMPT*temps_retro 0 / cl;
 run; *modèle final;
+* residual vciry outp=cond outpm=marg ;
+
 
 /*
 Selection pas à pas descendante (modèle à pente et intercept aléatoire) :
@@ -225,12 +243,7 @@ estimate
 */
 
 
-
-/*************************/
-/* Adéquation du modèle  */
-/*************************/
-
-/* Création des quantiles pour la variable temps rétro */
+/* Création des quantiles pour la variable temps rétro 
 proc univariate data=projet1b_deces;
 var temps_retro;
 output out=quantile pctlpre=P_ pctlpts=0 to 100 by 20;
@@ -241,8 +254,34 @@ data marg;
   if temps_retro >= -3.78 and temps_retro < -2.38 then quant=1;
   if temps_retro >= -2.38 and temps_retro < -1.59 then quant=2;
   if temps_retro >= -1.59 and temps_retro < -0.86 then quant=3;
-  if temps_retro >= -0.86 and temps_retro < -0.04 then quant=4;
-  if temps_retro >= -0.04  then quant=5; *inutile !!! ;
+  if temps_retro >= -0.86 and temps_retro <= -0.04 then quant=4;
+run;
+*/
+
+
+
+
+/*************************/
+/* Adéquation du modèle  */
+/*************************/
+
+/* Création des déciles pour la variable temps rétro */
+proc univariate data=projet1b_deces;
+var temps_retro;
+output out=quantile pctlpre=P_ pctlpts=0 to 100 by 10;
+run;
+data marg;
+  set marg;
+  if temps_retro >= -8.19 and temps_retro < -4.81 then quant=0;
+  if temps_retro >= -4.81 and temps_retro < -3.78 then quant=1;
+  if temps_retro >= -3.78 and temps_retro < -2.94 then quant=2;
+  if temps_retro >= -2.94 and temps_retro < -2.38 then quant=3;
+  if temps_retro >= -2.38 and temps_retro < -2.04 then quant=4;
+  if temps_retro >= -2.04 and temps_retro < -1.59 then quant=5;
+  if temps_retro >= -1.59 and temps_retro < -1.18 then quant=6;
+  if temps_retro >= -1.18 and temps_retro < -0.86 then quant=7;
+  if temps_retro >= -0.86 and temps_retro < -0.51 then quant=8;
+  if temps_retro >= -0.51 and temps_retro <= -0.04 then quant=9;
 run;
 /* Répartition de UMSARS selon les quantiles */
 proc sgpanel data=marg;
@@ -424,6 +463,7 @@ run;
 proc sort data=plotds;
 by groupe quant;
 run;
+/*
 data plotds;
 set plotds;
 if quant=0 then centre=-5.985;
@@ -432,9 +472,24 @@ if quant=2 then centre=-1.985;
 if quant=3 then centre=-1.225;
 if quant=4 then centre=-0.45;
 run;
+*/
 
-symbol1 color=blue interpol=HILOTJ width=1; 
-symbol2 color=red interpol=HILOTJ width=1; 
+data plotds;
+set plotds;
+if quant=0 then centre=-6.5;
+if quant=1 then centre=-4.295;
+if quant=2 then centre=-3.36;
+if quant=3 then centre=-2.66;
+if quant=4 then centre=-2.21;
+if quant=5 then centre=-1.815;
+if quant=6 then centre=-1.385;
+if quant=7 then centre=-1.02;
+if quant=8 then centre=-0.685;
+if quant=9 then centre=-0.275;
+run;
+
+symbol1 color=blue interpol=HILOTJ width=1 mode=include; 
+symbol2 color=red interpol=HILOTJ width=1 mode=include; 
 proc gplot data=plotds;
 	title "Représentation des moyennes et de leurs intervalles de confiance en fonction du temps";
 	axis1   color=black value=(font=arial height=1.5)
@@ -442,9 +497,9 @@ proc gplot data=plotds;
 			width=1 minor=none major=(width=1) order=(20 to 80 by 5);
 	axis2   color=black value=(font=arial height=1.5)
 			label=(font=arial height=1.5 "Temps rétrospectif avant le décès (en années)")
-			width=1 minor=none major=(width=1) order=(-6 to 0 by 1);
+			width=1 minor=none major=(width=1) order=(-7 to 0 by 0.5);
 	legend1	mode=share position=(top center inside) frame down=2 label=none
-			value=(font=arial height=1.5 justify=left "Valeurs observées" "Valeurs prédites");
+			value=(font=arial height=1.5 justify=left "Valeurs observées" "Valeurs estimées");
 plot y*centre=groupe /vaxis=axis1 haxis=axis2 legend=legend1 noframe;
 run;
 
