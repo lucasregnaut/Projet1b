@@ -29,13 +29,6 @@ data projet1b;
 	label UMSARS_1_2="Somme des UMSARS 1 et 2";
 run;
 
-*pour avoir une observation par individu;
-data first;
-set projet1b;
-	by id;
-	if first.id=1 then output;
-run;
-
 *définition du temps rétrospectif;
 data projet1b;
 set projet1b;
@@ -49,17 +42,13 @@ set projet1b;
 	if DCD="Oui" then output;
 run;
 
+*pour avoir une observation par individu;
 data first_deces;
 set projet1b_deces;
 	by id;
 	if first.id=1 then output;
 run;
 
-*FAUX;
-data first_deces2;
-set first;
-	if DCD="Oui" then output;
-run;
 
 *exporter pour travailler sur R : To export to comma-delimited use the following syntax;
 PROC EXPORT DATA=projet1b 
@@ -73,10 +62,6 @@ DBMS=CSV REPLACE;
 DELIMITER=";"; 
 RUN;
 
-
-/* 
-normalité : pour intercept et pente aléatoire
-*/
 
 
 
@@ -102,10 +87,6 @@ proc tabulate data=first_deces missing noseps formchar(1,3,4,5,6,7,8,9,10,11)=" 
 			(all="TOTAL")*(n="N" colpctn="%")*f=5.1
 		/misstext=" " rtspace=50;
 run;
-*verif ok;
-proc freq data=first_deces;
-tables sexe type_ams certitude dysauto sexe*dcd type_ams*dcd certitude*dcd dysauto*dcd;
-run;
 
 *descriptif variables quanti (table first);
 proc tabulate data=first_deces missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
@@ -117,11 +98,6 @@ proc tabulate data=first_deces missing noseps formchar (1,3,4,5,6,7,8,9,10,11)="
 	keylabel n="N" nmiss="Données manquantes" mean="Moyenne" std="Ecart-type" stderr="SE" 
 			min="Minimum" q1="1er quartile" median="Médiane" q3="3e quartile" max="Maximum";
 run;
-*verif ok;
-proc means data=first_deces n nmiss mean std min q1 median q3 max maxdec=2;
-var agediag delai_sympt age_evnt;
-class dcd;
-run;
 
 *descriptif variables quanti (table projet1b);
 proc tabulate data=projet1b_deces missing noseps formchar (1,3,4,5,6,7,8,9,10,11)=" ƒƒƒƒƒƒƒƒƒ" vardef=df;
@@ -132,14 +108,6 @@ proc tabulate data=projet1b_deces missing noseps formchar (1,3,4,5,6,7,8,9,10,11
 		/misstext=" " rtspace=35;
 	keylabel n="N" nmiss="Données manquantes" mean="Moyenne" std="Ecart-type" stderr="SE" 
 			min="Minimum" q1="1er quartile" median="Médiane" q3="3e quartile" max="Maximum";
-run;
-*verif ok;
-proc means data=projet1b n nmiss mean std min q1 median q3 max maxdec=2;
-var delai_vis UMSARS_1_2 temps_retro;
-class dcd;
-run;
-proc means data=projet1b_deces n nmiss mean std min q1 median q3 max maxdec=2;
-var delai_vis UMSARS_1_2 temps_retro;
 run;
 
 
@@ -221,6 +189,7 @@ estimate "Niveau moyen chez les hommes, au délai symptomatique=0, à T=-2" int 1 
 run; *modèle final;
 
 
+
 /*
 Selection pas à pas descendante (modèle à pente et intercept aléatoire) :
 - enlever la p valeur la plus élevée
@@ -289,9 +258,6 @@ run;
 
 
 
-
-
-
 /* valeurs prédites */
 ods output 'Summary statistics'=stats; 
 proc sort data=marg out=temp_; 
@@ -315,12 +281,6 @@ set plotds_p;
 groupe=1;
 run;
 
-/*
-symbol interpol=HILOTJ; 
-proc gplot data=plotds_p; 
-plot y*quant;
-run;
-*/
 
 /* valeurs observées */
 ods output 'Summary statistics'=stats2; 
@@ -344,12 +304,7 @@ data plotds_o;
 set plotds_o;
 groupe=0;
 run;
-/*
-symbol interpol=HILOTJ; 
-proc gplot data=plotds_o; 
-plot y*quant;
-run;
-*/
+
 
 *les deux;
 data plotds;
